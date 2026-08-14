@@ -7,8 +7,8 @@
 
 ## 🌐 Live Demo & Deployment
 
-- 🚀 **Frontend Live App (Vercel):** `[Your Vercel Live URL Here — e.g. https://tripvault.vercel.app]`
-- ⚡ **Backend API Service (Render):** `[Your Render Live URL Here — e.g. https://tripvault-api.onrender.com]`
+- 🚀 **Frontend Live App (Vercel):** [https://tripvault-poojapm.vercel.app](https://tripvault-poojapm.vercel.app)
+- ⚡ **Backend API Service (Render):** [https://tripvault-backend.onrender.com](https://tripvault-backend.onrender.com)
 
 ---
 
@@ -86,7 +86,7 @@
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/tripvault.git
+git clone https://github.com/poojapm2704-hash/tripvault.git
 cd tripvault
 ```
 
@@ -144,7 +144,7 @@ Open your browser and navigate to `http://localhost:5173`.
 ### Frontend (Vercel)
 1. Log into [Vercel](https://vercel.com) and import your GitHub repository.
 2. Set Root Directory to `client`.
-3. Add Environment Variable `VITE_API_URL` with your live Render backend URL (e.g. `https://tripvault-api.onrender.com`).
+3. Add Environment Variable `VITE_API_URL` with your live Render backend URL (e.g. `https://tripvault-backend.onrender.com`).
 4. Click **Deploy**.
 
 ---
