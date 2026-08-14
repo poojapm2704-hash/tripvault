@@ -127,7 +127,7 @@ Start the Vite frontend development server:
 npm run dev
 ```
 
-Open your browser and navigate to `http://localhost:5173`.
+Open your browser and navigate to `http://localhost:5173` (or `http://localhost:5174`).
 
 ---
 
