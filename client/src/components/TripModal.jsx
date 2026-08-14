@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 export default function TripModal({ isOpen, onClose, onSubmit, initialData }) {
-  // Use lazy state initialization to directly set initial values on mount
   const [formData, setFormData] = useState(() => ({
     title: initialData?.title || '',
     destination: initialData?.destination || '',
@@ -11,7 +10,6 @@ export default function TripModal({ isOpen, onClose, onSubmit, initialData }) {
     rating: initialData?.rating || 5,
   }));
 
-  // Sync state when initialData or isOpen changes using React's render pattern
   const [prevData, setPrevData] = useState({ initialData, isOpen });
   if (prevData.initialData !== initialData || prevData.isOpen !== isOpen) {
     setPrevData({ initialData, isOpen });
@@ -36,7 +34,6 @@ export default function TripModal({ isOpen, onClose, onSubmit, initialData }) {
     setIsValidating(true);
 
     try {
-      // Check destination against OpenStreetMap API
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           formData.destination
@@ -45,15 +42,13 @@ export default function TripModal({ isOpen, onClose, onSubmit, initialData }) {
       const data = await res.json();
 
       if (!data || data.length === 0) {
-        setLocationError('⚠️ Invalid location! This place is not marked on the map.');
+        setLocationError('⚠️ Location not found on map! Check spelling or try a broader city name.');
         setIsValidating(false);
-        return; // Prevent form submission
+        return;
       }
 
-      // Valid location -> proceed to submission
       onSubmit(formData);
     } catch {
-      // Fallback if network issue
       onSubmit(formData);
     } finally {
       setIsValidating(false);
@@ -100,7 +95,7 @@ export default function TripModal({ isOpen, onClose, onSubmit, initialData }) {
               }}
               style={{
                 ...styles.input,
-                borderColor: locationError ? '#f43f5e' : '#1e3a5f',
+                borderColor: locationError ? '#f43f5e' : 'rgba(139, 92, 246, 0.3)',
               }}
             />
             {locationError && (
@@ -177,7 +172,7 @@ export default function TripModal({ isOpen, onClose, onSubmit, initialData }) {
               }}
             >
               {isValidating
-                ? 'Verifying Location...'
+                ? 'Verifying...'
                 : initialData
                 ? 'Save Changes'
                 : 'Create Trip'}
@@ -196,48 +191,62 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(11, 19, 41, 0.85)',
+    backgroundColor: 'rgba(9, 13, 22, 0.85)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
-    padding: '20px',
+    padding: '16px',
   },
   modalCard: {
-    backgroundColor: '#152238',
-    border: '1px solid #1e3a5f',
-    borderRadius: '16px',
-    padding: '28px',
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    backdropFilter: 'blur(24px)',
+    border: '1px solid rgba(139, 92, 246, 0.35)',
+    borderRadius: '20px',
+    padding: '32px',
     width: '100%',
-    maxWidth: '500px',
-    boxShadow: '0 20px 30px -10px rgba(0, 242, 254, 0.15)',
+    maxWidth: '520px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    boxShadow: '0 25px 60px -15px rgba(124, 58, 237, 0.35)',
+    boxSizing: 'border-box',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '20px',
+    marginBottom: '22px',
   },
   title: {
     margin: 0,
     fontSize: '22px',
+    fontWeight: '800',
     color: '#ffffff',
   },
   closeBtn: {
-    background: 'none',
-    border: 'none',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
     color: '#94a3b8',
-    fontSize: '20px',
+    fontSize: '18px',
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '18px',
   },
   row: {
     display: 'flex',
     gap: '12px',
+    flexWrap: 'wrap',
   },
   inputGroup: {
     display: 'flex',
@@ -246,49 +255,50 @@ const styles = {
   },
   label: {
     fontSize: '13px',
-    fontWeight: '600',
-    color: '#00f2fe',
+    fontWeight: '700',
+    color: '#38bdf8',
   },
   input: {
     width: '100%',
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #1e3a5f',
-    backgroundColor: '#0a1120',
+    padding: '12px 14px',
+    borderRadius: '10px',
+    border: '1px solid rgba(139, 92, 246, 0.3)',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
     color: '#ffffff',
     fontSize: '14px',
     boxSizing: 'border-box',
     outline: 'none',
   },
   errorText: {
-    color: '#fb7185',
+    color: '#fda4af',
     fontSize: '12px',
     marginTop: '2px',
     fontWeight: '500',
   },
   buttonGroup: {
     display: 'flex',
-    gap: '12px',
-    marginTop: '10px',
+    gap: '14px',
+    marginTop: '12px',
   },
   cancelBtn: {
     flex: 1,
     backgroundColor: 'transparent',
-    color: '#94a3b8',
-    border: '1px solid #1e3a5f',
-    padding: '12px',
-    borderRadius: '8px',
-    fontWeight: 'bold',
+    color: '#cbd5e1',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    padding: '14px',
+    borderRadius: '10px',
+    fontWeight: '700',
     cursor: 'pointer',
   },
   submitBtn: {
     flex: 1,
-    backgroundColor: '#10b981',
+    background: 'linear-gradient(135deg, #7c3aed, #0284c7)',
     color: '#ffffff',
     border: 'none',
-    padding: '12px',
-    borderRadius: '8px',
-    fontWeight: 'bold',
+    padding: '14px',
+    borderRadius: '10px',
+    fontWeight: '700',
     cursor: 'pointer',
+    boxShadow: '0 4px 15px rgba(124, 58, 237, 0.4)',
   },
 };

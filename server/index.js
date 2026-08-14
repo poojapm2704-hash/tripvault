@@ -13,8 +13,13 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Root API Health Check Route
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'TripVault API is running ✈️' });
+});
+
+// API Routes
 app.use('/api/auth', require('./routes/auth'));
-// Add this line in server.js with your other routes
 app.use('/api/trips', require('./routes/tripRoutes'));
 app.use('/api/users', require('./routes/users'));
 

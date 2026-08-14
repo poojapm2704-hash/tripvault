@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import api from '../services/api';
+import Footer from '../components/Footer';
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
@@ -9,7 +11,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Simple password strength calculator
   const getPasswordStrength = (pass) => {
     if (!pass) return { label: '', color: 'transparent', width: '0%' };
     if (pass.length < 6) return { label: 'Weak (min 6 chars)', color: '#f43f5e', width: '33%' };
@@ -24,201 +25,215 @@ export default function Register() {
     setError('');
     
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+      const msg = 'Password must be at least 6 characters long.';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
 
     try {
-      await axios.post('http://localhost:5000/api/auth/register', formData);
-      
-      // Brief delay for smooth interaction feedback
+      await api.post('/api/auth/register', formData);
+      toast.success('Account created successfully! Please log in to continue.');
+
       setTimeout(() => {
         navigate('/login');
-      }, 500);
+      }, 800);
     } catch (err) {
       setLoading(false);
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      const errMsg = err.response?.data?.message || 'Registration failed. Please try again.';
+      setError(errMsg);
+      toast.error(errMsg);
     }
   };
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.card}>
-        {/* Brand Header */}
-        <div style={styles.brandHeader}>
-          <span style={styles.logoIcon}>✈️</span>
-          <h1 style={styles.logoTitle}>Join TripVault</h1>
-          <p style={styles.subtitle}>Start cataloging your travels and memories.</p>
-        </div>
-
-        {/* Error Alert Box */}
-        {error && (
-          <div style={styles.errorAlert}>
-            <span>⚠️ {error}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Full Name</label>
-            <input
-              type="text"
-              placeholder="Pooja"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              style={styles.input}
-            />
+    <div style={styles.pageWrapper}>
+      <div style={styles.pageContainer}>
+        <div style={styles.card}>
+          {/* Brand Header */}
+          <div style={styles.brandHeader}>
+            <span style={styles.logoIcon}>✈️</span>
+            <h1 style={styles.logoTitle}>Join TripVault</h1>
+            <p style={styles.subtitle}>Start cataloging your travels and memories.</p>
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Email Address</label>
-            <input
-              type="email"
-              placeholder="name@example.com"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              style={styles.input}
-            />
-          </div>
+          {/* Error Alert Box */}
+          {error && (
+            <div style={styles.errorAlert}>
+              <span>⚠️ {error}</span>
+            </div>
+          )}
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Password</label>
-            <div style={styles.passwordWrapper}>
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Full Name</label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                type="text"
+                placeholder="Pooja"
                 required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 style={styles.input}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={styles.togglePasswordBtn}
-              >
-                {showPassword ? '🙈 Hide' : '👁️ Show'}
-              </button>
             </div>
 
-            {/* Password Strength Meter */}
-            {formData.password && (
-              <div style={styles.strengthContainer}>
-                <div style={styles.strengthBarBg}>
-                  <div 
-                    style={{
-                      ...styles.strengthBarFill,
-                      width: strength.width,
-                      backgroundColor: strength.color
-                    }} 
-                  />
-                </div>
-                <span style={{ ...styles.strengthLabel, color: strength.color }}>
-                  {strength.label}
-                </span>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Email Address</label>
+              <input
+                type="email"
+                placeholder="name@example.com"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Password</label>
+              <div style={styles.passwordWrapper}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  style={styles.input}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={styles.togglePasswordBtn}
+                >
+                  {showPassword ? '🙈 Hide' : '👁️ Show'}
+                </button>
               </div>
-            )}
+
+              {/* Password Strength Meter */}
+              {formData.password && (
+                <div style={styles.strengthContainer}>
+                  <div style={styles.strengthBarBg}>
+                    <div 
+                      style={{
+                        ...styles.strengthBarFill,
+                        width: strength.width,
+                        backgroundColor: strength.color
+                      }} 
+                    />
+                  </div>
+                  <span style={{ ...styles.strengthLabel, color: strength.color }}>
+                    {strength.label}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                ...styles.submitBtn,
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {loading ? 'Creating Account...' : 'Create My Vault →'}
+            </button>
+          </form>
+
+          {/* Footer */}
+          <div style={styles.footer}>
+            <p>
+              Already registered?{' '}
+              <Link to="/login" style={styles.link}>
+                Log In Here
+              </Link>
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              ...styles.submitBtn,
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {loading ? 'Creating Account...' : 'Create My Vault →'}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <div style={styles.footer}>
-          <p>
-            Already registered?{' '}
-            <Link to="/login" style={styles.link}>
-              Log In Here
-            </Link>
-          </p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
 
-// Inline Styles Object
 const styles = {
-  pageContainer: {
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#0b1329',
+  pageWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
     minHeight: '100vh',
+  },
+  pageContainer: {
+    flex: 1,
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '20px',
-    background: 'radial-gradient(circle at top left, #1a233a, #0b1329)',
+    padding: '40px 20px',
+    background: 'radial-gradient(ellipse at center, rgba(124, 58, 237, 0.25) 0%, rgba(15, 23, 42, 0.95) 70%)',
   },
   card: {
-    backgroundColor: '#152238',
-    border: '1px solid #1e3a5f',
-    borderRadius: '16px',
-    padding: '36px',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(139, 92, 246, 0.3)',
+    borderRadius: '20px',
+    padding: '40px',
     width: '100%',
-    maxWidth: '420px',
-    boxShadow: '0 20px 30px -10px rgba(0, 242, 254, 0.1)',
+    maxWidth: '440px',
+    boxShadow: '0 25px 50px -12px rgba(124, 58, 237, 0.25)',
   },
   brandHeader: {
     textAlign: 'center',
-    marginBottom: '28px',
+    marginBottom: '32px',
   },
   logoIcon: {
-    fontSize: '42px',
+    fontSize: '48px',
     display: 'block',
-    marginBottom: '8px',
+    marginBottom: '10px',
   },
   logoTitle: {
     margin: '0',
-    fontSize: '28px',
-    fontWeight: 'bold',
-    background: 'linear-gradient(135deg, #4facfe, #00f2fe)', // Cyan electric gradient
+    fontSize: '32px',
+    fontWeight: '800',
+    background: 'linear-gradient(135deg, #c084fc, #38bdf8, #818cf8)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
+    letterSpacing: '-0.5px',
   },
   subtitle: {
-    margin: '6px 0 0 0',
+    margin: '8px 0 0 0',
     color: '#94a3b8',
     fontSize: '14px',
   },
   errorAlert: {
     backgroundColor: 'rgba(244, 63, 94, 0.15)',
     border: '1px solid #f43f5e',
-    color: '#fb7185',
-    padding: '12px',
-    borderRadius: '8px',
+    color: '#fda4af',
+    padding: '12px 16px',
+    borderRadius: '10px',
     fontSize: '14px',
-    marginBottom: '20px',
+    marginBottom: '22px',
     textAlign: 'center',
+    fontWeight: '500',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '18px',
+    gap: '20px',
   },
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '8px',
   },
   label: {
     fontSize: '13px',
-    fontWeight: '600',
-    color: '#00f2fe',
+    fontWeight: '700',
+    color: '#38bdf8',
+    letterSpacing: '0.3px',
   },
   passwordWrapper: {
     position: 'relative',
@@ -227,24 +242,26 @@ const styles = {
   },
   input: {
     width: '100%',
-    padding: '12px 14px',
-    borderRadius: '8px',
-    border: '1px solid #1e3a5f',
-    backgroundColor: '#0a1120',
+    padding: '14px 16px',
+    borderRadius: '10px',
+    border: '1px solid rgba(139, 92, 246, 0.3)',
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
     color: '#ffffff',
     fontSize: '15px',
     boxSizing: 'border-box',
     outline: 'none',
+    transition: 'all 0.2s',
   },
   togglePasswordBtn: {
     position: 'absolute',
-    right: '10px',
+    right: '12px',
     background: 'none',
     border: 'none',
     color: '#38bdf8',
-    fontSize: '12px',
+    fontSize: '13px',
     cursor: 'pointer',
     padding: '4px 8px',
+    fontWeight: '600',
   },
   strengthContainer: {
     display: 'flex',
@@ -255,7 +272,7 @@ const styles = {
   strengthBarBg: {
     flex: 1,
     height: '4px',
-    backgroundColor: '#1e3a5f',
+    backgroundColor: '#334155',
     borderRadius: '2px',
     overflow: 'hidden',
   },
@@ -268,27 +285,29 @@ const styles = {
     fontWeight: '600',
   },
   submitBtn: {
-    backgroundColor: '#10b981', // Vibrant Emerald button
+    background: 'linear-gradient(135deg, #7c3aed, #0284c7)',
     color: '#ffffff',
     border: 'none',
-    padding: '14px',
-    borderRadius: '8px',
-    fontWeight: 'bold',
+    padding: '15px',
+    borderRadius: '10px',
+    fontWeight: '700',
     fontSize: '16px',
     marginTop: '10px',
-    transition: 'background-color 0.2s',
+    boxShadow: '0 8px 20px -4px rgba(124, 58, 237, 0.4)',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
   footer: {
-    marginTop: '24px',
+    marginTop: '28px',
     textAlign: 'center',
-    borderTop: '1px solid #1e3a5f',
-    paddingTop: '18px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    paddingTop: '20px',
     fontSize: '14px',
     color: '#94a3b8',
   },
   link: {
-    color: '#00f2fe',
+    color: '#38bdf8',
     textDecoration: 'none',
-    fontWeight: '600',
+    fontWeight: '700',
   },
 };

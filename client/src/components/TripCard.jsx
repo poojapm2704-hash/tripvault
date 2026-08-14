@@ -1,5 +1,9 @@
-export default function TripCard({ trip, onEdit, onDelete }) {
-  // Default fallback image if trip.coverImage is missing or empty
+import { useState } from 'react';
+import ImageUploader from './ImageUploader';
+
+export default function TripCard({ trip, onEdit, onDelete, onPhotoUploaded }) {
+  const [showUploader, setShowUploader] = useState(false);
+
   const defaultImage = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=500&auto=format&fit=crop';
 
   const formatDate = (dateString) => {
@@ -17,14 +21,15 @@ export default function TripCard({ trip, onEdit, onDelete }) {
   };
 
   return (
-    <div style={styles.card}>
-      {/* 1. Cover Image Header with Fallback */}
+    <div className="glass-card" style={styles.card}>
+      {/* Cover Image Header */}
       <div style={styles.imageContainer}>
         <img 
           src={trip.coverImage || defaultImage} 
           alt={trip.title || 'Trip Cover'} 
           style={styles.coverImage}
         />
+        <div style={styles.imageOverlay} />
       </div>
 
       <div style={styles.cardContent}>
@@ -44,10 +49,10 @@ export default function TripCard({ trip, onEdit, onDelete }) {
           <p style={styles.description}>{trip.description}</p>
         )}
 
-        {/* 2. Photo Gallery Grid (renders if trip.photos has items) */}
+        {/* Photo Gallery Grid */}
         {trip.photos && trip.photos.length > 0 && (
           <div style={styles.galleryContainer}>
-            <p style={styles.galleryTitle}>📸 Photo Gallery</p>
+            <p style={styles.galleryTitle}>📸 Photo Gallery ({trip.photos.length})</p>
             <div style={styles.photoGrid}>
               {trip.photos.map((photoUrl, index) => (
                 <img 
@@ -59,6 +64,24 @@ export default function TripCard({ trip, onEdit, onDelete }) {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Toggle Image Uploader */}
+        <button
+          onClick={() => setShowUploader(!showUploader)}
+          style={styles.toggleUploadBtn}
+        >
+          📷 {showUploader ? 'Close Upload' : 'Upload Photo'}
+        </button>
+
+        {showUploader && (
+          <ImageUploader 
+            tripId={trip._id} 
+            onUploadSuccess={(updatedTrip) => {
+              setShowUploader(false);
+              if (onPhotoUploaded) onPhotoUploaded(updatedTrip);
+            }} 
+          />
         )}
 
         <div style={styles.actionRow}>
@@ -76,28 +99,33 @@ export default function TripCard({ trip, onEdit, onDelete }) {
 
 const styles = {
   card: {
-    backgroundColor: '#152238',
-    border: '1px solid #1e3a5f',
-    borderRadius: '12px',
-    overflow: 'hidden', // Ensures image fits neatly inside card corners
+    borderRadius: '16px',
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    justify: 'space-between',
-    boxShadow: '0 10px 20px -5px rgba(0, 0, 0, 0.4)',
-    transition: 'transform 0.2s ease',
+    justifyContent: 'space-between',
   },
   imageContainer: {
+    position: 'relative',
     width: '100%',
-    height: '180px',
-    backgroundColor: '#0a1120',
+    height: '190px',
+    backgroundColor: '#0f172a',
   },
   coverImage: {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
   },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '40px',
+    background: 'linear-gradient(to top, rgba(15, 23, 42, 0.9), transparent)',
+  },
   cardContent: {
-    padding: '20px',
+    padding: '22px',
     display: 'flex',
     flexDirection: 'column',
     flexGrow: 1,
@@ -111,42 +139,44 @@ const styles = {
   title: {
     margin: '0',
     fontSize: '20px',
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#ffffff',
   },
   destination: {
     margin: '4px 0 0 0',
-    color: '#00f2fe',
+    color: '#38bdf8',
     fontSize: '14px',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   rating: {
     fontSize: '14px',
   },
   dateBadge: {
-    backgroundColor: '#0a1120',
-    color: '#94a3b8',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    color: '#cbd5e1',
     padding: '8px 12px',
-    borderRadius: '6px',
+    borderRadius: '8px',
     fontSize: '13px',
     marginBottom: '14px',
-    border: '1px solid #1e293b',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    display: 'inline-block',
   },
   description: {
-    color: '#cbd5e1',
+    color: '#94a3b8',
     fontSize: '14px',
-    lineHeight: '1.4',
-    marginBottom: '16px',
+    lineHeight: '1.5',
+    marginBottom: '18px',
   },
   galleryContainer: {
     marginBottom: '16px',
   },
   galleryTitle: {
-    color: '#94a3b8',
+    color: '#a855f7',
     fontSize: '12px',
-    fontWeight: 'bold',
+    fontWeight: '800',
     textTransform: 'uppercase',
-    marginBottom: '8px',
+    letterSpacing: '0.5px',
+    marginBottom: '10px',
   },
   photoGrid: {
     display: 'grid',
@@ -156,35 +186,49 @@ const styles = {
   gridPhoto: {
     width: '100%',
     height: '60px',
-    borderRadius: '6px',
+    borderRadius: '8px',
     objectFit: 'cover',
-    border: '1px solid #1e3a5f',
+    border: '1px solid rgba(139, 92, 246, 0.3)',
+  },
+  toggleUploadBtn: {
+    backgroundColor: 'rgba(124, 58, 237, 0.15)',
+    color: '#c084fc',
+    border: '1px dashed #a855f7',
+    padding: '10px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    cursor: 'pointer',
+    marginBottom: '16px',
+    fontWeight: '600',
+    transition: 'all 0.2s',
   },
   actionRow: {
     display: 'flex',
-    gap: '10px',
+    gap: '12px',
     marginTop: 'auto',
   },
   editBtn: {
     flex: 1,
-    backgroundColor: '#1e3a5f',
-    color: '#00f2fe',
-    border: '1px solid #00f2fe',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    color: '#38bdf8',
+    border: '1px solid #0284c7',
     padding: '10px',
-    borderRadius: '6px',
-    fontWeight: 'bold',
+    borderRadius: '8px',
+    fontWeight: '700',
     cursor: 'pointer',
     fontSize: '14px',
+    transition: 'all 0.2s',
   },
   deleteBtn: {
     flex: 1,
     backgroundColor: 'rgba(244, 63, 94, 0.15)',
-    color: '#fb7185',
+    color: '#fda4af',
     border: '1px solid #f43f5e',
     padding: '10px',
-    borderRadius: '6px',
-    fontWeight: 'bold',
+    borderRadius: '8px',
+    fontWeight: '700',
     cursor: 'pointer',
     fontSize: '14px',
+    transition: 'all 0.2s',
   },
 };

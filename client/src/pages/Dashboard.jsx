@@ -1,13 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { toast } from 'react-toastify';
+import api from '../services/api';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import LoadingSpinner from '../components/LoadingSpinner';
 import TripCard from '../components/TripCard';
 import TripModal from '../components/TripModal';
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  // Lazy initialize user state directly from localStorage
   const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem('user');
     if (!storedUser) return null;
@@ -29,30 +32,18 @@ export default function Dashboard() {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // Bio state
+
   const [bio, setBio] = useState('');
   const [isEditingBio, setIsEditingBio] = useState(false);
+  const [savingBio, setSavingBio] = useState(false);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
 
-  // Get Auth Config with Bearer Token
-  const getAuthConfig = useCallback(() => {
-    const token = localStorage.getItem('token');
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-  }, []);
-
-  // Fetch logged-in user profile details (to sync bio & username)
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/auth/me', getAuthConfig());
+        const res = await api.get('/api/auth/me');
         const fetchedUser = res.data.user || res.data;
         setUser((prev) => ({
           ...prev,
@@ -67,110 +58,85 @@ export default function Dashboard() {
     };
 
     fetchUserData();
-  }, [getAuthConfig]);
+  }, []);
 
-  // Reusable refetch function for Trips
   const fetchTrips = useCallback(async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/trips', getAuthConfig());
+      setLoading(true);
+      const res = await api.get('/api/trips');
       setTrips(res.data);
       setError('');
     } catch (err) {
       console.error('Failed to fetch trips:', err);
-      setError('Could not load trips. Please check backend connection.');
+      const msg = 'Could not load trips. Please check backend connection.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [getAuthConfig]);
+  }, []);
 
-  // Handle Authentication Redirect & Initial Data Fetching
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
 
-    let isSubscribed = true;
+    fetchTrips();
+  }, [user, navigate, fetchTrips]);
 
-    axios.get('http://localhost:5000/api/trips', getAuthConfig())
-      .then((res) => {
-        if (isSubscribed) {
-          setTrips(res.data);
-          setError('');
-        }
-      })
-      .catch((err) => {
-        if (isSubscribed) {
-          console.error('Failed to fetch trips:', err);
-          setError('Could not load trips. Please check backend connection.');
-        }
-      })
-      .finally(() => {
-        if (isSubscribed) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isSubscribed = false;
-    };
-  }, [user, navigate, getAuthConfig]);
-
-  // UPDATE BIO (PUT /api/users/profile)
   const handleUpdateBio = async (e) => {
     e.preventDefault();
+    setSavingBio(true);
     try {
-      const res = await axios.put(
-        'http://localhost:5000/api/users/profile',
-        { bio },
-        getAuthConfig()
-      );
-      alert('Bio updated successfully!');
+      const res = await api.put('/api/users/profile', { bio });
+      toast.success('Bio updated successfully! 👤');
       setUser((prev) => ({ ...prev, bio: res.data.user?.bio || bio }));
       setIsEditingBio(false);
     } catch (err) {
       console.error(err);
-      alert('Failed to update bio.');
+      toast.error('Failed to update bio.');
+    } finally {
+      setSavingBio(false);
     }
   };
 
-  // CREATE OR UPDATE TRIP (POST / PUT)
   const handleFormSubmit = async (formData) => {
     try {
       if (selectedTrip) {
-        // Edit Trip
-        await axios.put(
-          `http://localhost:5000/api/trips/${selectedTrip._id}`,
-          formData,
-          getAuthConfig()
-        );
+        await api.put(`/api/trips/${selectedTrip._id}`, formData);
+        toast.success('Trip updated successfully! ✏️');
       } else {
-        // Create Trip
-        await axios.post(
-          'http://localhost:5000/api/trips',
-          formData,
-          getAuthConfig()
-        );
+        await api.post('/api/trips', formData);
+        toast.success('Trip created successfully! ✈️');
       }
       setIsModalOpen(false);
       setSelectedTrip(null);
       fetchTrips();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving trip.');
+      const errMsg = err.response?.data?.message || 'Error saving trip.';
+      toast.error(errMsg);
     }
   };
 
-  // DELETE TRIP
   const handleDeleteTrip = async (tripId) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this trip memory?');
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/trips/${tripId}`, getAuthConfig());
+      await api.delete(`/api/trips/${tripId}`);
+      toast.success('Trip deleted successfully.');
       fetchTrips();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete trip.');
+      toast.error(err.response?.data?.message || 'Failed to delete trip.');
     }
+  };
+
+  const handlePhotoUploaded = (updatedTrip) => {
+    toast.success('Photo uploaded to Cloudinary! 📸');
+    setTrips((prevTrips) =>
+      prevTrips.map((t) => (t._id === updatedTrip._id ? updatedTrip : t))
+    );
   };
 
   const handleOpenCreateModal = () => {
@@ -183,38 +149,21 @@ export default function Dashboard() {
     setIsModalOpen(true);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
-
   if (!user) return null;
 
   return (
-    <div style={styles.pageContainer}>
-      {/* Top Navbar */}
-      <header style={styles.navbar}>
-        <div style={styles.navBrand}>
-          <span style={{ fontSize: '28px' }}>✈️</span>
-          <h1 style={styles.brandTitle}>TripVault</h1>
-        </div>
-        <div style={styles.userControls}>
-          <span style={styles.welcomeText}>Welcome, {user?.fullName || 'Traveler'}!</span>
-          <button onClick={handleLogout} style={styles.logoutBtn}>Log Out</button>
-        </div>
-      </header>
+    <div style={styles.pageWrapper}>
+      <Navbar user={user} />
 
-      {/* Main Container */}
       <main style={styles.mainContent}>
-        {/* 📍 PUBLIC PROFILE & EDIT BIO CONTROLS */}
+        {/* Profile Controls */}
         <div style={styles.profileControlRow}>
           <Link 
-  to={`/profile/${user?.username || user?.fullName || user?.name}`} 
-  style={styles.publicProfileBtn}
->
-  👤 View My Public Profile
-</Link>
+            to={`/profile/${user?.username || user?.fullName || user?.name}`} 
+            style={styles.publicProfileBtn}
+          >
+            👤 View My Public Profile
+          </Link>
 
           <button 
             onClick={() => setIsEditingBio(!isEditingBio)}
@@ -224,14 +173,13 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* User Bio Card / Edit Form Modal-box */}
+        {/* User Bio Card */}
         <div style={styles.bioSection}>
-          <h3 style={{ margin: '0 0 6px 0', fontSize: '18px' }}>About Me</h3>
-          <p style={{ margin: 0, color: '#cbd5e1', fontSize: '14px' }}>
-            {user?.bio || 'No bio added yet. Tell travelers about yourself!'}
+          <h3 style={styles.bioTitle}>About Me</h3>
+          <p style={styles.bioText}>
+            {user?.bio || 'You haven\'t added a bio yet. Tell travelers about your adventures!'}
           </p>
 
-          {/* Edit Bio Form */}
           {isEditingBio && (
             <form onSubmit={handleUpdateBio} style={styles.bioForm}>
               <textarea 
@@ -241,8 +189,8 @@ export default function Dashboard() {
                 style={styles.textarea}
                 placeholder="Tell the world about your travels..."
               />
-              <button type="submit" style={styles.saveBioBtn}>
-                Save Bio
+              <button type="submit" disabled={savingBio} style={styles.saveBioBtn}>
+                {savingBio ? 'Saving...' : 'Save Bio'}
               </button>
             </form>
           )}
@@ -261,23 +209,23 @@ export default function Dashboard() {
 
         {error && <div style={styles.errorBox}>⚠️ {error}</div>}
 
-        {/* Loading Indicator */}
+        {/* Loading / Empty / Content states */}
         {loading ? (
-          <div style={styles.loadingText}>Loading your travel memories...</div>
+          <LoadingSpinner message="Loading your travel memories..." />
         ) : trips.length === 0 ? (
-          /* Empty State */
           <div style={styles.emptyCard}>
-            <span style={{ fontSize: '54px', display: 'block', marginBottom: '12px' }}>🏝️</span>
-            <h3 style={{ color: '#ffffff', margin: '0 0 8px 0' }}>No trips added yet</h3>
-            <p style={{ color: '#94a3b8', margin: '0 0 20px 0', fontSize: '14px' }}>
-              Your vault is empty! Start cataloging your journeys today.
+            <span style={{ fontSize: '64px', display: 'block', marginBottom: '16px' }}>🏝️</span>
+            <h3 style={{ color: '#ffffff', margin: '0 0 10px 0', fontSize: '24px', fontWeight: '800' }}>
+              You haven't added any trips yet.
+            </h3>
+            <p style={{ color: '#94a3b8', margin: '0 0 28px 0', fontSize: '15px', lineHeight: '1.6' }}>
+              Start your journey today! Record your travels, destinations, ratings, and photos in your vault.
             </p>
             <button onClick={handleOpenCreateModal} style={styles.createBtn}>
               Create Your First Trip
             </button>
           </div>
         ) : (
-          /* Trip Cards Grid */
           <div style={styles.grid}>
             {trips.map((trip) => (
               <TripCard
@@ -285,13 +233,13 @@ export default function Dashboard() {
                 trip={trip}
                 onEdit={handleOpenEditModal}
                 onDelete={handleDeleteTrip}
+                onPhotoUploaded={handlePhotoUploaded}
               />
             ))}
           </div>
         )}
       </main>
 
-      {/* Modal Form Component */}
       <TripModal
         key={selectedTrip ? selectedTrip._id : 'new-trip'}
         isOpen={isModalOpen}
@@ -299,120 +247,103 @@ export default function Dashboard() {
         onSubmit={handleFormSubmit}
         initialData={selectedTrip}
       />
+
+      <Footer />
     </div>
   );
 }
 
-// Styling matching Royal Navy `#0b1329` theme
 const styles = {
-  pageContainer: {
+  pageWrapper: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#0b1329',
     minHeight: '100vh',
     color: '#ffffff',
-  },
-  navbar: {
-    backgroundColor: '#152238',
-    borderBottom: '1px solid #1e3a5f',
-    padding: '16px 32px',
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  navBrand: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  brandTitle: {
-    margin: 0,
-    fontSize: '24px',
-    fontWeight: 'bold',
-    background: 'linear-gradient(135deg, #4facfe, #00f2fe)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  userControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-  },
-  welcomeText: {
-    color: '#cbd5e1',
-    fontWeight: '500',
-    fontSize: '15px',
-  },
-  logoutBtn: {
-    backgroundColor: '#f43f5e',
-    color: 'white',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '14px',
+    flexDirection: 'column',
   },
   mainContent: {
     maxWidth: '1200px',
+    width: '100%',
     margin: '0 auto',
-    padding: '32px 20px',
+    padding: '36px 20px 60px 20px',
+    flex: 1,
+    boxSizing: 'border-box',
   },
   profileControlRow: {
     display: 'flex',
-    gap: '12px',
-    marginBottom: '20px',
+    gap: '14px',
+    marginBottom: '24px',
     flexWrap: 'wrap',
   },
   publicProfileBtn: {
-    padding: '8px 16px',
-    backgroundColor: '#007bff',
+    padding: '12px 22px',
+    background: 'linear-gradient(135deg, #0284c7, #2563eb)',
     color: '#ffffff',
-    borderRadius: '6px',
+    borderRadius: '10px',
     textDecoration: 'none',
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: '14px',
+    boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)',
     display: 'inline-block',
+    transition: 'all 0.2s',
   },
   editBioToggleBtn: {
-    padding: '8px 16px',
-    backgroundColor: '#1e3a5f',
-    color: '#00f2fe',
-    border: '1px solid #00f2fe',
-    borderRadius: '6px',
+    padding: '12px 22px',
+    background: 'rgba(30, 41, 59, 0.7)',
+    color: '#c084fc',
+    border: '1px solid #a855f7',
+    borderRadius: '10px',
     cursor: 'pointer',
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: '14px',
+    backdropFilter: 'blur(10px)',
   },
   bioSection: {
-    backgroundColor: '#152238',
-    border: '1px solid #1e3a5f',
-    borderRadius: '12px',
-    padding: '20px',
-    marginBottom: '28px',
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    backdropFilter: 'blur(16px)',
+    border: '1px solid rgba(139, 92, 246, 0.25)',
+    borderRadius: '16px',
+    padding: '24px 28px',
+    marginBottom: '36px',
+    boxShadow: '0 12px 30px -10px rgba(0, 0, 0, 0.4)',
+  },
+  bioTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '20px',
+    color: '#38bdf8',
+    fontWeight: '700',
+  },
+  bioText: {
+    margin: 0,
+    color: '#cbd5e1',
+    fontSize: '15px',
+    lineHeight: '1.6',
   },
   bioForm: {
-    marginTop: '16px',
+    marginTop: '18px',
   },
   textarea: {
     width: '100%',
-    padding: '10px',
-    backgroundColor: '#0a1120',
+    padding: '14px',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
     color: '#ffffff',
-    border: '1px solid #1e3a5f',
-    borderRadius: '6px',
-    marginBottom: '10px',
+    border: '1px solid rgba(139, 92, 246, 0.3)',
+    borderRadius: '10px',
+    marginBottom: '14px',
     outline: 'none',
     boxSizing: 'border-box',
+    fontSize: '14px',
   },
   saveBioBtn: {
-    backgroundColor: '#10b981',
+    background: 'linear-gradient(135deg, #10b981, #059669)',
     color: '#ffffff',
     border: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    fontWeight: 'bold',
+    padding: '10px 22px',
+    borderRadius: '8px',
+    fontWeight: '700',
     cursor: 'pointer',
     fontSize: '14px',
+    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
   },
   actionBar: {
     display: 'flex',
@@ -420,12 +351,15 @@ const styles = {
     alignItems: 'center',
     marginBottom: '32px',
     flexWrap: 'wrap',
-    gap: '16px',
+    gap: '20px',
   },
   sectionTitle: {
     margin: 0,
     fontSize: '28px',
-    color: '#ffffff',
+    fontWeight: '800',
+    background: 'linear-gradient(135deg, #ffffff, #cbd5e1)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
   },
   subtitle: {
     margin: '4px 0 0 0',
@@ -433,42 +367,38 @@ const styles = {
     fontSize: '14px',
   },
   createBtn: {
-    backgroundColor: '#10b981',
+    background: 'linear-gradient(135deg, #7c3aed, #0284c7)',
     color: '#ffffff',
     border: 'none',
-    padding: '12px 24px',
-    borderRadius: '8px',
-    fontWeight: 'bold',
+    padding: '14px 28px',
+    borderRadius: '10px',
+    fontWeight: '700',
     fontSize: '15px',
     cursor: 'pointer',
-    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+    boxShadow: '0 8px 22px -4px rgba(124, 58, 237, 0.45)',
   },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-    gap: '24px',
+    gap: '28px',
   },
   emptyCard: {
-    backgroundColor: '#152238',
-    border: '1px solid #1e3a5f',
-    borderRadius: '16px',
-    padding: '60px 20px',
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    backdropFilter: 'blur(16px)',
+    border: '1px solid rgba(139, 92, 246, 0.25)',
+    borderRadius: '20px',
+    padding: '60px 28px',
     textAlign: 'center',
-    maxWidth: '500px',
+    maxWidth: '540px',
     margin: '40px auto',
-  },
-  loadingText: {
-    textAlign: 'center',
-    color: '#00f2fe',
-    fontSize: '18px',
-    marginTop: '60px',
+    boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)',
   },
   errorBox: {
     backgroundColor: 'rgba(244, 63, 94, 0.15)',
     border: '1px solid #f43f5e',
-    color: '#fb7185',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    marginBottom: '20px',
+    color: '#fda4af',
+    padding: '14px 18px',
+    borderRadius: '10px',
+    marginBottom: '24px',
   },
 };
